@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  KISSAT_TAG: rel-4.0.4
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+      - run: cargo +nightly fmt --all --check
+      - run: cargo +stable clippy --workspace --all-targets --all-features -- -D warnings
+      - run: cargo +stable test --workspace --all-features
+
+  kissat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: build Kissat
+        run: |
+          git clone --depth 1 --branch "$KISSAT_TAG" https://github.com/arminbiere/kissat.git "$RUNNER_TEMP/kissat"
+          cd "$RUNNER_TEMP/kissat" && ./configure && make -j4
+      - run: cargo build --release --workspace
+      - name: identical counters on the corpus
+        run: XSAT_KISSAT="$RUNNER_TEMP/kissat/build/kissat" ./target/release/xsat-dev solve --preprocess=1 tests/corpus/*.cnf

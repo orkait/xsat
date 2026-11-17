@@ -1,0 +1,25 @@
+flowchart LR
+  classDef step fill:#ffffff,stroke:#3b6fd8,stroke-width:1.5px,color:#0b1f44
+  classDef decision fill:#fff8e6,stroke:#c98a00,color:#3d2a00
+  classDef outcome fill:#eaf7ee,stroke:#2f8f4e,color:#0f3b1d
+
+  decide[decide<br/>VMTF queue or score heap]:::step
+  prop[propagate<br/>watches with blocking literals]:::step
+  conflict{conflict?}:::decision
+  analyze[analyze<br/>first UIP]:::step
+  minimize[minimize · shrink<br/>remove implied literals]:::step
+  learn[learn clause<br/>glue · tier · proof line]:::step
+  backtrack[backtrack<br/>chronological or to jump level]:::step
+  schedule{due?}:::decision
+  maintain[reduce · restart · rephase<br/>mode switch · inprocessing]:::step
+  sat(["SAT, extend the model"]):::outcome
+  unsat(["UNSAT, empty clause"]):::outcome
+
+  decide --> prop --> conflict
+  conflict -- no --> schedule
+  schedule -- yes --> maintain --> decide
+  schedule -- "no, all assigned" --> sat
+  schedule -- no --> decide
+  conflict -- yes --> analyze
+  analyze --> minimize --> learn --> backtrack --> prop
+  analyze -- "conflict at level 0" --> unsat

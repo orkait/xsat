@@ -1,0 +1,21 @@
+[package]
+name = "xsat-cli"
+description = "command line front end of the xsat SAT solver"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "xsat"
+path = "src/main.rs"
+
+[dependencies]
+xsat.workspace = true
+mimalloc.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

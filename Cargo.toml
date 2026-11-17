@@ -1,0 +1,59 @@
+[workspace]
+resolver = "2"
+members = ["crates/xsat", "crates/xsat-cli", "crates/xsat-dev"]
+
+[workspace.package]
+version = "0.1.0-alpha"
+edition = "2021"
+rust-version = "1.85"
+license = "Apache-2.0 AND MIT"
+repository = "https://github.com/orkait/xsat"
+
+[workspace.dependencies]
+xsat = { path = "crates/xsat", version = "0.1.0-alpha" }
+thiserror = "2"
+mimalloc = { version = "0.1", default-features = false }
+
+[workspace.lints.rust]
+future-incompatible = { level = "warn", priority = -2 }
+nonstandard_style = { level = "deny", priority = -1 }
+rust_2018_idioms = { level = "deny", priority = -1 }
+missing_debug_implementations = "deny"
+unsafe_code = "forbid"
+unreachable_pub = "deny"
+unused_qualifications = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -2 }
+pedantic = { level = "deny", priority = -1 }
+redundant_clone = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+unreachable = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+string_slice = "deny"
+lossy_float_literal = "deny"
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+clone_on_ref_ptr = "deny"
+str_to_string = "deny"
+format_push_string = "deny"
+unused_trait_names = "deny"
+string_add = "deny"
+panic_in_result_fn = "deny"
+missing_assert_message = "deny"
+struct_excessive_bools = "deny"
+fn_params_excessive_bools = "deny"
+rc_buffer = "deny"
+wildcard_imports = "deny"
+as_conversions = "deny"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
