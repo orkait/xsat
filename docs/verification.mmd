@@ -4,6 +4,8 @@ flowchart LR
   classDef run fill:#eef4ff,stroke:#3b6fd8,stroke-width:1.5px,color:#0b1f44
   classDef check fill:#eaf7ee,stroke:#2f8f4e,color:#0f3b1d
 
+  subgraph canvas[" "]
+  direction LR
   cnf[CNF corpus]:::input
   xsat[xsat]:::run
   kissat[Kissat 4.0.4]:::run
@@ -13,6 +15,8 @@ flowchart LR
   model[model satisfies every clause]:::check
   idrup[idrup-check accepts<br/>incremental sessions]:::check
   lrat[lrat-check accepts<br/>drat-trim's LRAT]:::check
+  end
+  style canvas fill:#f6f8fb,stroke:#d5dbe6,stroke-width:1px
 
   cnf --> xsat
   cnf --> kissat

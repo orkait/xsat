@@ -4,6 +4,8 @@ flowchart LR
   classDef decision fill:#fff8e6,stroke:#c98a00,color:#3d2a00
   classDef outcome fill:#eaf7ee,stroke:#2f8f4e,color:#0f3b1d
 
+  subgraph canvas[" "]
+  direction LR
   decide[decide<br/>VMTF queue or score heap]:::step
   prop[propagate<br/>watches with blocking literals]:::step
   conflict{conflict?}:::decision
@@ -15,6 +17,8 @@ flowchart LR
   maintain[reduce · restart · rephase<br/>mode switch · inprocessing]:::step
   sat(["SAT, extend the model"]):::outcome
   unsat(["UNSAT, empty clause"]):::outcome
+  end
+  style canvas fill:#f6f8fb,stroke:#d5dbe6,stroke-width:1px
 
   decide --> prop --> conflict
   conflict -- no --> schedule

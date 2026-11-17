@@ -3,6 +3,8 @@ flowchart TB
   classDef module fill:#ffffff,stroke:#8aa4d6,color:#0b1f44
   classDef outside fill:#f6f6f6,stroke:#9a9a9a,color:#333
 
+  subgraph canvas[" "]
+  direction TB
   user([CNF file or library caller]):::outside
 
   subgraph cli["xsat-cli"]
@@ -35,6 +37,8 @@ flowchart TB
 
   kissat([Kissat 4.0.4]):::outside
   checkers([idrup-check · drat-trim · lrat-check]):::outside
+  end
+  style canvas fill:#f6f8fb,stroke:#d5dbe6,stroke-width:1px
 
   user --> parse --> api
   run --> api
