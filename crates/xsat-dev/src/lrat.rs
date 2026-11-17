@@ -71,6 +71,6 @@ pub(crate) fn prove(xsat: &Path, files: &[String]) -> Result<bool, DevError> {
     Ok(report(
         &faults,
         files.len(),
-        "files solve with checked LRAT proofs",
+        "files have xsat proofs that lrat-check accepts",
     ))
 }

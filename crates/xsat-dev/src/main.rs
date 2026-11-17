@@ -6,6 +6,7 @@ mod error;
 mod lrat;
 mod process;
 mod random;
+mod serve;
 mod sessions;
 
 fn main() -> ExitCode {

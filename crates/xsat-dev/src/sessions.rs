@@ -7,14 +7,13 @@ use xsat::{
 };
 
 use crate::{
-    compare::report,
+    compare::sampled,
     config,
     error::DevError,
     process::{self, TempDir},
     random::Random,
 };
 
-const USAGE: &str = "xsat-dev assume [--cases N] [--seed N]";
 const DEFAULT_CASES: usize = 200;
 const VARIABLES: (i64, i64) = (8, 48);
 const CLAUSES_PER_HUNDRED_VARIABLES: i64 = 426;
@@ -382,30 +381,11 @@ fn case(kissat: &Path, dir: &Path, seed: u64) -> Result<Option<String>, DevError
 }
 
 pub(crate) fn assume(kissat: &Path, args: &[String]) -> Result<bool, DevError> {
-    let (mut count, mut seed) = (DEFAULT_CASES, 0_u64);
-    let mut args = args.iter();
-    while let Some(arg) = args.next() {
-        let value = args.next().and_then(|value| value.parse().ok());
-        match (arg.as_str(), value) {
-            ("--cases", Some(value)) => count = usize::try_from(value).unwrap_or(count),
-            ("--seed", Some(value)) => seed = value,
-            _ => return Err(DevError::Usage(USAGE)),
-        }
-    }
     let dir = TempDir::new("xsat-assume")?;
-    let seeds: Vec<u64> = (0..count)
-        .filter_map(|at| u64::try_from(at).ok())
-        .map(|at| seed.wrapping_add(at))
-        .collect();
-    let differences: Vec<String> = process::parallel(&seeds, config::jobs(), |&seed| {
-        case(kissat, dir.path(), seed)
-    })?
-    .into_iter()
-    .filter_map(Result::transpose)
-    .collect::<Result<_, _>>()?;
-    Ok(report(
-        &differences,
-        count,
+    sampled(
+        args,
+        DEFAULT_CASES,
         "solve sequences agree with kissat",
-    ))
+        |seed| case(kissat, dir.path(), seed),
+    )
 }

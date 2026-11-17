@@ -37,6 +37,7 @@ xsat prints `s SATISFIABLE` with the model in `v` lines, or `s UNSATISFIABLE`, a
 | 🧹 **Inprocessing** | probing, backbones, transitive reduction, equivalence substitution, vivification, sweeping, congruence closure, bounded variable addition, bounded variable elimination |
 | 🧾 **Proofs** | DRAT in binary and ASCII, IDRUP for incremental sessions, LRAT through `drat-trim` |
 | ➕ **Incremental** | `solve_assuming` with failed-literal cores, `freeze` and `melt`, new clauses between solves |
+| 🔌 **Any language** | `xsat --serve` keeps one solver alive behind a line protocol on stdin and stdout, with projected model enumeration inside the solver |
 | 🧩 **Extensible** | `Propagator` trait for external theories, built-in Gauss-Jordan for XOR constraints |
 | ⚡ **Parallel** | `--workers=N` runs a diversified portfolio with the same answer and model on every run |
 | 🛡️ **Safe** | `unsafe` is forbidden; clippy's `pedantic` group is denied |
@@ -100,8 +101,31 @@ xsat [ <option> ... ] [ <dimacs> [ <proof> ] ]
 | `--workers=<n>` | parallel portfolio |
 | `--no-binary` | ASCII DRAT |
 | `--relaxed`, `--strict` | DIMACS parsing mode |
+| `--serve` | answer requests on stdin, see below |
 
 Compressed input is read through `gzip`, `bzip2`, `xz`, `lzma` and `7z`.
+
+</details>
+
+<details>
+<summary><b>Serving requests from another language</b></summary>
+
+`xsat --serve` reads one request per line and answers each one, in DIMACS integers. The solver lives as long as stdin stays open, so clauses, learned clauses and statistics carry over between solves.
+
+| Request | Reply | Meaning |
+|---|---|---|
+| `a 1 2 0 -1 0` | none | add clauses, each ending in `0` |
+| `s -3 0` | `s SATISFIABLE`, `s UNSATISFIABLE` or `s UNKNOWN` | solve under assumptions; `s 0` for none |
+| `m 1 2 0` | `v 1 -2 0` | model values of the listed variables, `m 0` for all |
+| `u` | `u -3 0` | failed assumptions after an unsatisfiable solve |
+| `e 10 1 2 0` | one `v` line per model, then an `s` line | enumerate up to 10 models projected on variables 1 and 2 (`0` for no limit), blocking each one; `s UNSATISFIABLE` means all were found |
+| `l 1000` | none | conflict limit for the next solve |
+
+A malformed request gets `x <reason>` and changes nothing.
+
+```sh
+printf 'a 1 2 0 -1 2 0 -2 3 0\ns -3 0\nu\ne 0 1 2 0\n' | xsat --serve
+```
 
 </details>
 
@@ -130,6 +154,7 @@ Each source file is named after the Kissat file it ports: `cdcl/analyze.rs` is `
 | `xsat-dev parse`, `mutate`, `range` | same parse results and option ranges as Kissat, also on corrupted input |
 | `xsat-dev assume` | random incremental sessions agree with Kissat step by step; `idrup-check` accepts the proofs |
 | `xsat-dev prove <cnf>...` | `lrat-check` accepts the LRAT that `drat-trim` derives from xsat's DRAT |
+| `xsat-dev serve` | random `--serve` sessions agree with brute force on answers, models, cores and enumerated model sets |
 
 Point `XSAT_KISSAT`, `XSAT_IDRUP_CHECK`, `XSAT_DRAT_TRIM` and `XSAT_LRAT_CHECK` at the tools, or put them on `PATH`.
 

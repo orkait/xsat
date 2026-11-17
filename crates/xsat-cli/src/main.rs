@@ -17,6 +17,8 @@ use xsat::{
     unported, Outcome, Solver, KISSAT_VERSION,
 };
 
+mod serve;
+
 #[global_allocator]
 static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
@@ -32,6 +34,10 @@ const NAME_WIDTH: usize = 30;
 const VALUE_WIDTH: usize = 12;
 const STDIN: &str = "<stdin>";
 const UNKNOWN: &str = "s UNKNOWN";
+const SATISFIABLE: &str = "s SATISFIABLE";
+const UNSATISFIABLE: &str = "s UNSATISFIABLE";
+const SERVE: &str = "--serve";
+const SERVE_HELP: &str = "answer solve requests on stdin, one per line";
 const LONG: &str = "--";
 const CONFLICTS: &str = "--conflicts=";
 const DECISIONS: &str = "--decisions=";
@@ -311,12 +317,7 @@ fn signed(path: &str, signature: &[u8]) -> bool {
 
 fn solve(run: &Run, out: &mut impl Write) -> Result<u8, Failure> {
     if let Some(opt) = unported(&run.options) {
-        return Err(format!(
-            "option '--{}={}' needs a part of Kissat not ported yet",
-            opt.spec().name,
-            run.options.get(opt)
-        )
-        .into());
+        return Err(unported_message(&run.options, opt).into());
     }
     let name = run.path.as_deref().unwrap_or(STDIN);
     let source =
@@ -366,14 +367,14 @@ fn solve(run: &Run, out: &mut impl Write) -> Result<u8, Failure> {
     let code = match outcome {
         Outcome::Satisfiable => {
             check_model(engine.solver(), &originals)?;
-            writeln!(out, "s SATISFIABLE")?;
+            writeln!(out, "{SATISFIABLE}")?;
             if run.witness {
                 witness(engine.solver(), variables, out)?;
             }
             EXIT_SATISFIABLE
         }
         Outcome::Unsatisfiable => {
-            writeln!(out, "s UNSATISFIABLE")?;
+            writeln!(out, "{UNSATISFIABLE}")?;
             EXIT_UNSATISFIABLE
         }
         Outcome::Unknown => {
@@ -395,6 +396,14 @@ fn solve(run: &Run, out: &mut impl Write) -> Result<u8, Failure> {
         }
     }
     Ok(code)
+}
+
+fn unported_message(options: &Options, opt: Opt) -> String {
+    format!(
+        "option '--{}={}' needs a part of Kissat not ported yet",
+        opt.spec().name,
+        options.get(opt)
+    )
 }
 
 fn open_proof(path: &str, format: Format) -> Result<Proof, String> {
@@ -477,7 +486,7 @@ fn help(out: &mut impl Write) -> io::Result<()> {
     for limit in LIMITS {
         writeln!(out, "  {limit}")?;
     }
-    writeln!(out)?;
+    writeln!(out, "\n  {SERVE}  {SERVE_HELP}\n")?;
     for configuration in Configuration::ALL {
         writeln!(
             out,
@@ -505,6 +514,8 @@ enum Failure {
     Output(#[from] io::Error),
     #[error("writing the proof failed: {0}")]
     Proof(io::Error),
+    #[error(transparent)]
+    Solver(#[from] SolverError),
 }
 
 impl From<String> for Failure {
@@ -513,8 +524,30 @@ impl From<String> for Failure {
     }
 }
 
+fn served(run: Run, out: &mut impl Write) -> Result<u8, Failure> {
+    if run.path.is_some()
+        || run.workers > 1
+        || run.conflicts.is_some()
+        || run.decisions.is_some()
+        || run.time.is_some()
+    {
+        return Err(format!(
+            "'{SERVE}' reads requests from stdin and takes no files, limits or workers"
+        )
+        .into());
+    }
+    if let Some(opt) = unported(&run.options) {
+        return Err(unported_message(&run.options, opt).into());
+    }
+    serve::serve(run.options, out)?;
+    Ok(EXIT_UNKNOWN)
+}
+
 fn run(args: &[String], out: &mut impl Write) -> Result<u8, Failure> {
-    match invocation(args)? {
+    let (serve, args): (Vec<String>, Vec<String>) =
+        args.iter().cloned().partition(|arg| arg == SERVE);
+    match invocation(&args)? {
+        Action::Solve(run) if !serve.is_empty() => return served(*run, out),
         Action::Help => help(out)?,
         Action::Range => {
             for spec in SPECS.iter().filter(|spec| spec.opt.ranged()) {

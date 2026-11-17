@@ -12,7 +12,7 @@ use crate::{
 };
 
 const USAGE: &str =
-    "xsat-dev range | parse <dimacs>... | solve <--option>... <dimacs>... | mutate [--cases N] [--seed N] <dimacs>... | assume [--cases N] [--seed N] | prove <dimacs>...";
+    "xsat-dev range | parse <dimacs>... | solve <--option>... <dimacs>... | mutate [--cases N] [--seed N] <dimacs>... | assume [--cases N] [--seed N] | serve [--cases N] [--seed N] | prove <dimacs>...";
 const XSAT_PACKAGE: &str = "xsat-cli";
 const XSAT_BINARY: &str = "xsat";
 const RELEASE: &str = "target/release";
@@ -130,10 +130,7 @@ pub(crate) fn report(differences: &[String], total: usize, what: &str) -> bool {
     for difference in differences.iter().take(SHOWN) {
         println!("DIFFER {difference}");
     }
-    println!(
-        "{}/{total} {what} in kissat and xsat",
-        total - differences.len()
-    );
+    println!("{}/{total} {what}", total - differences.len());
     differences.is_empty()
 }
 
@@ -215,7 +212,11 @@ fn mutate(kissat: &Path, xsat: &Path, args: &[String]) -> Result<bool, DevError>
         .into_iter()
         .filter_map(Result::transpose)
         .collect::<Result<_, _>>()?;
-    Ok(report(&differences, count, "mutated files parse alike"))
+    Ok(report(
+        &differences,
+        count,
+        "mutated files parse alike in kissat and xsat",
+    ))
 }
 
 fn trace(ran: &Ran) -> Vec<String> {
@@ -260,6 +261,32 @@ fn number<T: std::str::FromStr>(value: Option<&String>) -> Result<T, DevError> {
         .ok_or(DevError::Usage(USAGE))
 }
 
+pub(crate) fn sampled(
+    args: &[String],
+    cases: usize,
+    what: &str,
+    case: impl Fn(u64) -> Result<Option<String>, DevError> + Sync,
+) -> Result<bool, DevError> {
+    let (mut cases, mut seed) = (cases, 0_u64);
+    let mut args = args.iter();
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--cases" => cases = number(args.next())?,
+            "--seed" => seed = number(args.next())?,
+            _ => return Err(DevError::Usage(USAGE)),
+        }
+    }
+    let seeds: Vec<u64> = (0..cases)
+        .filter_map(|at| u64::try_from(at).ok())
+        .map(|at| seed.wrapping_add(at))
+        .collect();
+    let differences: Vec<String> = process::parallel(&seeds, config::jobs(), |&seed| case(seed))?
+        .into_iter()
+        .filter_map(Result::transpose)
+        .collect::<Result<_, _>>()?;
+    Ok(report(&differences, cases, what))
+}
+
 pub(crate) fn main(args: &[String]) -> Result<bool, DevError> {
     let kissat = config::kissat();
     let xsat = xsat()?;
@@ -274,7 +301,11 @@ pub(crate) fn main(args: &[String]) -> Result<bool, DevError> {
                 })
                 .collect();
             let differences = compared(&kissat, &xsat, &cases)?;
-            Ok(report(&differences, cases.len(), "files parse alike"))
+            Ok(report(
+                &differences,
+                cases.len(),
+                "files parse alike in kissat and xsat",
+            ))
         }
         Some((mode, rest)) if mode == "solve" => {
             let (options, files) = rest.split_at(
@@ -294,11 +325,12 @@ pub(crate) fn main(args: &[String]) -> Result<bool, DevError> {
             Ok(report(
                 &differences,
                 files.len(),
-                "files solve with identical counters",
+                "files solve with identical counters in kissat and xsat",
             ))
         }
         Some((mode, rest)) if mode == "mutate" => mutate(&kissat, &xsat, rest),
         Some((mode, rest)) if mode == "assume" => crate::sessions::assume(&kissat, rest),
+        Some((mode, rest)) if mode == "serve" => crate::serve::check(&xsat, rest),
         Some((mode, files)) if mode == "prove" && !files.is_empty() => {
             crate::lrat::prove(&xsat, files)
         }
