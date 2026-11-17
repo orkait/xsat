@@ -1,14 +1,25 @@
+%%{init: {"themeVariables": {"fontSize": "12px"}, "flowchart": {"nodeSpacing": 14, "rankSpacing": 24, "padding": 6, "wrappingWidth": 260, "diagramPadding": 4}}}%%
 flowchart LR
-  classDef input fill:#f3f3f3,stroke:#8a8a8a,color:#222
-  classDef run fill:#ffffff,stroke:#3b6fd8,stroke-width:1.5px,color:#0b1f44
+  classDef input fill:#f6f6f6,stroke:#9a9a9a,color:#333
+  classDef run fill:#eef4ff,stroke:#3b6fd8,stroke-width:1.5px,color:#0b1f44
   classDef check fill:#eaf7ee,stroke:#2f8f4e,color:#0f3b1d
 
-  cnf[CNF]:::input
+  cnf[CNF corpus]:::input
   xsat[xsat]:::run
   kissat[Kissat 4.0.4]:::run
-  same["same answer · same counters<br/>byte-identical DRAT"]:::check
-  checked["model checked<br/>idrup-check · lrat-check"]:::check
 
-  cnf --> xsat & kissat
-  xsat & kissat --> same
-  xsat --> checked
+  counters[same answer and same<br/>conflicts · decisions · propagations · ticks]:::check
+  drat[byte-identical DRAT proof]:::check
+  model[model satisfies every clause]:::check
+  idrup[idrup-check accepts<br/>incremental sessions]:::check
+  lrat[lrat-check accepts<br/>drat-trim's LRAT]:::check
+
+  cnf --> xsat
+  cnf --> kissat
+  xsat --> counters
+  kissat --> counters
+  xsat --> drat
+  kissat --> drat
+  xsat --> model
+  xsat --> idrup
+  xsat --> lrat
